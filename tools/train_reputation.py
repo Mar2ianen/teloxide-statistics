@@ -2,7 +2,7 @@
 
 Input is a local JSONL with numeric point-in-time features only (no texts,
 no user IDs): {"label": 0|1, "features": {"id_prior": 0.5, ...}} using the
-nine FEATURES_V1 names. Labels must come from reviewer decisions joined to
+nine FEATURES_V2 names. Labels must come from reviewer decisions joined to
 the latest audit snapshot at or before label time; conflicting users are
 dropped upstream. See docs/REPUTATION_MODEL_CARD.md.
 
@@ -20,7 +20,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import average_precision_score, roc_auc_score
 from sklearn.model_selection import StratifiedKFold, cross_val_predict
 
-FEATURES_V1 = [
+FEATURES_V2 = [
     "id_prior",
     "audit_risk",
     "message_count_log",
@@ -30,6 +30,9 @@ FEATURES_V1 = [
     "positivity",
     "negativity_received",
     "account_age_days_log",
+    "text_gemma_prob",
+    "text_tfidf_prob",
+    "has_text",
 ]
 
 
@@ -40,7 +43,7 @@ def load_rows(path):
             continue
         row = json.loads(line)
         assert row["label"] in (0, 1)
-        vector = [row["features"][name] for name in FEATURES_V1]
+        vector = [row["features"][name] for name in FEATURES_V2]
         assert all(isinstance(v, (int, float)) and np.isfinite(v) for v in vector)
         labels.append(row["label"])
         matrix.append(vector)
@@ -87,7 +90,7 @@ def main():
     print(json.dumps({"n": len(labels), "spam": int(labels.sum()), **evaluate(matrix, labels)}))
     head = fit_head(matrix, labels)
     args.output.write_text(
-        json.dumps({"version": args.version, "features": FEATURES_V1, **head}) + "\n"
+        json.dumps({"version": args.version, "features": FEATURES_V2, **head}) + "\n"
     )
 
 

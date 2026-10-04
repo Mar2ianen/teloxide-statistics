@@ -24,6 +24,23 @@ pub const FEATURES_V1: &[&str] = &[
     "account_age_days_log",
 ];
 
+/// V2 adds stacked text-model probabilities and a text-presence flag.
+/// Same loader, same scoring; the artifact declares its own order.
+pub const FEATURES_V2: &[&str] = &[
+    "id_prior",
+    "audit_risk",
+    "message_count_log",
+    "active_days_log",
+    "link_ratio",
+    "dup_reuse_log",
+    "positivity",
+    "negativity_received",
+    "account_age_days_log",
+    "text_gemma_prob",
+    "text_tfidf_prob",
+    "has_text",
+];
+
 /// Versioned reputation head: `sigmoid(dot(weights, x) + intercept)`.
 #[derive(Debug, Clone)]
 pub struct ReputationModel {
@@ -31,6 +48,65 @@ pub struct ReputationModel {
     pub features: Vec<String>,
     pub weights: Vec<f64>,
     pub intercept: f64,
+    pub calibration: Calibration,
+}
+
+/// Supporting-score operating points selected on validation. Older packs
+/// without calibration fall back to the legacy text bands.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Calibration {
+    pub version: String,
+    pub supporting_threshold: f64,
+    pub strong_threshold: f64,
+    pub supporting_score: i32,
+    pub strong_score: i32,
+}
+
+impl Default for Calibration {
+    fn default() -> Self {
+        Self {
+            version: "legacy-support-v1".to_owned(),
+            supporting_threshold: 0.75,
+            strong_threshold: 0.9,
+            supporting_score: 10,
+            strong_score: 18,
+        }
+    }
+}
+
+impl Calibration {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.version.trim().is_empty()
+            || !self.supporting_threshold.is_finite()
+            || !self.strong_threshold.is_finite()
+            || !(0.0..=1.0).contains(&self.supporting_threshold)
+            || !(self.supporting_threshold..=1.0).contains(&self.strong_threshold)
+            || !(0..=45).contains(&self.supporting_score)
+            || !(self.supporting_score..=45).contains(&self.strong_score)
+        {
+            return Err("invalid reputation score calibration");
+        }
+        Ok(())
+    }
+
+    /// Invalid configuration or probability never increases risk.
+    pub fn score(&self, probability: Option<f64>) -> i32 {
+        let Some(probability) = probability.filter(|p| p.is_finite() && (0.0..=1.0).contains(p))
+        else {
+            return 0;
+        };
+        if self.validate().is_err() {
+            return 0;
+        }
+        if probability >= self.strong_threshold {
+            self.strong_score
+        } else if probability >= self.supporting_threshold {
+            self.supporting_score
+        } else {
+            0
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -40,6 +116,8 @@ struct ReputationExport {
     features: Vec<String>,
     weights: Vec<f64>,
     intercept: f64,
+    #[serde(default)]
+    calibration: Calibration,
 }
 
 impl ReputationModel {
@@ -58,11 +136,13 @@ impl ReputationModel {
         {
             anyhow::bail!("reputation weights must be finite");
         }
+        export.calibration.validate().map_err(anyhow::Error::msg)?;
         Ok(Self {
             version: export.version,
             features: export.features,
             weights: export.weights,
             intercept: export.intercept,
+            calibration: export.calibration,
         })
     }
 
@@ -126,6 +206,28 @@ mod tests {
         assert!(
             ReputationModel::load(
                 r#"{"version":"v","features":["a"],"weights":[1.0],"intercept":0.0,"extra":1}"#
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn calibration_scores_bands_and_rejects_invalid() {
+        let model = model();
+        assert_eq!(model.calibration.version, "legacy-support-v1");
+        assert_eq!(model.calibration.score(Some(0.9)), 18);
+        assert_eq!(model.calibration.score(Some(0.75)), 10);
+        assert_eq!(model.calibration.score(Some(0.5)), 0);
+        assert_eq!(model.calibration.score(Some(f64::NAN)), 0);
+        let v2 = ReputationModel::load(
+            r#"{"version":"v2","features":["a"],"weights":[1.0],"intercept":0.0,"calibration":{"version":"c","supporting_threshold":0.8,"strong_threshold":0.95,"supporting_score":4,"strong_score":8}}"#,
+        )
+        .unwrap();
+        assert_eq!(v2.calibration.score(Some(0.9)), 4);
+        assert_eq!(v2.calibration.score(Some(0.96)), 8);
+        assert!(
+            ReputationModel::load(
+                r#"{"version":"v2","features":["a"],"weights":[1.0],"intercept":0.0,"calibration":{"version":"c","supporting_threshold":0.9,"strong_threshold":0.5,"supporting_score":4,"strong_score":8}}"#
             )
             .is_err()
         );

@@ -1,6 +1,6 @@
 [package]
 name = "teloxide-statistics"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2024"
 license = "MIT"
 description = "Independent chat statistics core for Telegram community bots: reaction sentiment, engagement math, retention cohorts, shared formatting helpers"
