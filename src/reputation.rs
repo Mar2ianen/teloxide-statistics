@@ -5,7 +5,7 @@
 //! supporting probability. Feature order is fixed by the artifact; unknown
 //! feature names are rejected at load time.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Stable reputation feature names. Append-only: never rename.
 ///
@@ -53,7 +53,7 @@ pub struct ReputationModel {
 
 /// Supporting-score operating points selected on validation. Older packs
 /// without calibration fall back to the legacy text bands.
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Calibration {
     pub version: String,
