@@ -1,0 +1,29 @@
+[package]
+name = "teloxide-statistics"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "Independent chat statistics core for Telegram community bots: reaction sentiment, engagement math, retention cohorts, shared formatting helpers"
+repository = "https://github.com/Mar2ianen/teloxide-statistics"
+readme = "README.md"
+keywords = ["telegram", "teloxide", "statistics", "moderation"]
+categories = ["text-processing"]
+
+[features]
+default = ["render"]
+sentiment = []
+engagement = []
+render = []
+reputation = ["dep:anyhow", "dep:serde_json"]
+
+[lib]
+name = "teloxide_statistics"
+path = "src/lib.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", optional = true }
+anyhow = { version = "1", optional = true }
+
+[dev-dependencies]
+serde_json = "1"
