@@ -14,8 +14,8 @@ pub fn engagement_rate(active_users: u64, total_members: u64) -> Option<f64> {
     Some(active_users as f64 / total_members as f64)
 }
 
-/// Share of messages that received at least one reply. `None` on zero input.
-pub fn answered_share(replied_messages: u64, total_messages: u64) -> Option<f64> {
+/// Share of reply messages among all messages. `None` on zero input.
+pub fn reply_share(replied_messages: u64, total_messages: u64) -> Option<f64> {
     if total_messages == 0 {
         return None;
     }
@@ -90,8 +90,8 @@ mod tests {
     fn rates_reject_empty_denominators() {
         assert_eq!(engagement_rate(15, 100), Some(0.15));
         assert_eq!(engagement_rate(0, 0), None);
-        assert_eq!(answered_share(8, 10), Some(0.8));
-        assert_eq!(answered_share(0, 0), None);
+        assert_eq!(reply_share(8, 10), Some(0.8));
+        assert_eq!(reply_share(0, 0), None);
     }
 
     #[test]
