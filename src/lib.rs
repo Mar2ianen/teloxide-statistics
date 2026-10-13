@@ -1,10 +1,13 @@
 //! Independent chat statistics core for Telegram and community bots.
 //!
-//! Pure computation only: reaction sentiment, engagement math, retention
-//! cohorts, formatting helpers, and versioned reputation heads. SQL queries,
+//! Pure computation only: shared activity data, reaction sentiment,
+//! engagement math, retention cohorts, formatting helpers, and versioned
+//! reputation heads. SQL queries,
 //! Telegram API calls, persistence, and rendering into bot messages belong to
 //! the consuming application.
 
+#[cfg(feature = "engagement")]
+pub mod activity;
 #[cfg(feature = "engagement")]
 pub mod engagement;
 #[cfg(feature = "render")]

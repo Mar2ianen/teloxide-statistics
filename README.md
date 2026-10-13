@@ -10,9 +10,9 @@ consuming application.
 
 | Feature | Functionality |
 |---|---|
-| No defaults | Nothing (explicit opt-in) |
+| No defaults | No optional feature APIs |
 | `sentiment` | Reaction sentiment (positive/negative/undefined/unknown) with aggregate counts |
-| `engagement` | Engagement/answered rates, ChatKeeper-style user segments, retention cohort tables |
+| `engagement` | Shared `UserActivity` model, engagement/answered rates, ChatKeeper-style user segments, retention cohort tables |
 | `render` | `t.me/c` message links, `tg://user` mention links, truncation, display names |
 | `reputation` | Versioned linear reputation heads over small stable feature vectors |
 
